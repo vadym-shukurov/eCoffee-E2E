@@ -1,0 +1,6 @@
+framework module Pods_eCoffee {
+  umbrella header "Pods-eCoffee-umbrella.h"
+
+  export *
+  module * { export * }
+}
