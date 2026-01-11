@@ -1,13 +1,11 @@
 # eCoffee UI Test Automation Framework
 
-![iOS UI Tests](https://github.com/{owner}/{repo}/actions/workflows/ios-tests.yml/badge.svg)
-![PR Checks](https://github.com/{owner}/{repo}/actions/workflows/pr-checks.yml/badge.svg)
-![Nightly Regression](https://github.com/{owner}/{repo}/actions/workflows/nightly-regression.yml/badge.svg)
+[![iOS UI Tests](https://github.com/vadym-shukurov/eCoffee/actions/workflows/ios-tests.yml/badge.svg)](https://github.com/vadym-shukurov/eCoffee/actions/workflows/ios-tests.yml)
+[![PR Checks](https://github.com/vadym-shukurov/eCoffee/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/vadym-shukurov/eCoffee/actions/workflows/pr-checks.yml)
+[![Nightly Regression](https://github.com/vadym-shukurov/eCoffee/actions/workflows/nightly-regression.yml/badge.svg)](https://github.com/vadym-shukurov/eCoffee/actions/workflows/nightly-regression.yml)
 
 > Enterprise-Grade iOS Mobile Test Automation Framework  
-> **Author:** Vadym Shukurov  
-> 
-> *Replace `{owner}/{repo}` in badge URLs with your GitHub username and repository name*
+> **Author:** Vadym Shukurov
 
 ---
 

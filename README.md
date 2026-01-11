@@ -1,7 +1,7 @@
 # eCoffee
 
-![iOS UI Tests](https://github.com/{owner}/{repo}/actions/workflows/ios-tests.yml/badge.svg)
-![PR Checks](https://github.com/{owner}/{repo}/actions/workflows/pr-checks.yml/badge.svg)
+[![iOS UI Tests](https://github.com/vadym-shukurov/eCoffee/actions/workflows/ios-tests.yml/badge.svg)](https://github.com/vadym-shukurov/eCoffee/actions/workflows/ios-tests.yml)
+[![PR Checks](https://github.com/vadym-shukurov/eCoffee/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/vadym-shukurov/eCoffee/actions/workflows/pr-checks.yml)
 
 eCoffee is an iOS application for ordering coffee with a comprehensive, enterprise-grade UI test automation framework.
 
