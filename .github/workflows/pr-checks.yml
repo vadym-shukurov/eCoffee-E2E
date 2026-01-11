@@ -6,7 +6,7 @@ on:
     types: [opened, synchronize, reopened]
 
 env:
-  DEVELOPER_DIR: /Applications/Xcode_15.0.app/Contents/Developer
+  DEVELOPER_DIR: /Applications/Xcode_15.4.app/Contents/Developer
 
 jobs:
   # Quick build verification
@@ -39,7 +39,7 @@ jobs:
           xcodebuild build \
             -workspace eCoffee.xcworkspace \
             -scheme eCoffeeUITests \
-            -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.0' \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.5' \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             | xcpretty --color
