@@ -1,0 +1,90 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    types: [opened, synchronize, reopened]
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_15.0.app/Contents/Developer
+
+jobs:
+  # Quick build verification
+  build-check:
+    name: Build Check
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
+      - name: Install CocoaPods
+        run: |
+          gem install cocoapods
+          pod install --repo-update
+
+      - name: Select Xcode
+        run: sudo xcode-select -switch ${{ env.DEVELOPER_DIR }}
+
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -workspace eCoffee.xcworkspace \
+            -scheme eCoffeeUITests \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.0' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            | xcpretty --color
+
+  # Lint Swift files
+  swift-lint:
+    name: Swift Lint
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run SwiftLint
+        run: |
+          brew install swiftlint || true
+          swiftlint lint --reporter github-actions-logging eCoffeeUITests/ || true
+
+  # Check test file structure
+  test-structure-check:
+    name: Test Structure Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify Test Structure
+        run: |
+          echo "Checking test file structure..."
+          
+          # Verify required directories exist
+          test -d "eCoffeeUITests/Core" || (echo "Missing Core directory" && exit 1)
+          test -d "eCoffeeUITests/Screens" || (echo "Missing Screens directory" && exit 1)
+          test -d "eCoffeeUITests/Steps" || (echo "Missing Steps directory" && exit 1)
+          test -d "eCoffeeUITests/Tests" || (echo "Missing Tests directory" && exit 1)
+          test -d "eCoffeeUITests/TestData" || (echo "Missing TestData directory" && exit 1)
+          
+          echo "Test structure verified successfully!"
+
+      - name: Count Tests
+        run: |
+          echo "Test Statistics:"
+          echo "================"
+          echo "Test files: $(find eCoffeeUITests/Tests -name "*.swift" | wc -l)"
+          echo "Screen objects: $(find eCoffeeUITests/Screens -name "*.swift" | wc -l)"
+          echo "Step definitions: $(find eCoffeeUITests/Steps -name "*.swift" | wc -l)"
+          echo ""
+          echo "Test methods:"
+          grep -r "func test_" eCoffeeUITests/Tests --include="*.swift" | wc -l

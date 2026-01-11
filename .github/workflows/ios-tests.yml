@@ -1,0 +1,285 @@
+name: iOS UI Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - smoke
+          - e2e
+          - authentication
+          - basket
+          - checkout
+          - catalog
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_15.0.app/Contents/Developer
+  SCHEME: eCoffeeUITests
+  WORKSPACE: eCoffee.xcworkspace
+  DESTINATION: 'platform=iOS Simulator,name=iPhone 15,OS=17.0'
+
+jobs:
+  # Install dependencies
+  install-dependencies:
+    name: Install Dependencies
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
+      - name: Install CocoaPods
+        run: |
+          gem install cocoapods
+          pod install --repo-update
+
+      - name: Upload Pods
+        uses: actions/upload-artifact@v4
+        with:
+          name: pods
+          path: Pods
+          retention-days: 1
+
+  # Build the app
+  build:
+    name: Build
+    runs-on: macos-14
+    needs: install-dependencies
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Pods
+        uses: actions/download-artifact@v4
+        with:
+          name: pods
+          path: Pods
+
+      - name: Select Xcode
+        run: sudo xcode-select -switch ${{ env.DEVELOPER_DIR }}
+
+      - name: Build for Testing
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing \
+            -workspace ${{ env.WORKSPACE }} \
+            -scheme ${{ env.SCHEME }} \
+            -destination "${{ env.DESTINATION }}" \
+            -derivedDataPath DerivedData \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            | xcpretty --color
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: DerivedData
+          retention-days: 1
+
+  # Smoke Tests - Run on every PR
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: macos-14
+    needs: build
+    if: github.event_name == 'pull_request' || github.event.inputs.test_suite == 'smoke' || github.event.inputs.test_suite == 'all'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Pods
+        uses: actions/download-artifact@v4
+        with:
+          name: pods
+          path: Pods
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: DerivedData
+
+      - name: Select Xcode
+        run: sudo xcode-select -switch ${{ env.DEVELOPER_DIR }}
+
+      - name: Boot Simulator
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available | grep "iPhone 15" | head -1 | grep -oE '[A-F0-9-]{36}')
+          xcrun simctl boot "$DEVICE_ID" || true
+
+      - name: Run Smoke Tests
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building \
+            -workspace ${{ env.WORKSPACE }} \
+            -scheme ${{ env.SCHEME }} \
+            -destination "${{ env.DESTINATION }}" \
+            -derivedDataPath DerivedData \
+            -only-testing:eCoffeeUITests/SmokeTests \
+            -resultBundlePath TestResults/SmokeTests.xcresult \
+            | xcpretty --color --report junit --output TestResults/smoke-results.xml
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-test-results
+          path: TestResults/
+
+  # Full UI Tests - Run on push to main/develop
+  ui-tests:
+    name: UI Tests
+    runs-on: macos-14
+    needs: build
+    if: github.event_name == 'push' || github.event.inputs.test_suite == 'all'
+    strategy:
+      fail-fast: false
+      matrix:
+        test_class:
+          - AuthenticationTests
+          - BasketTests
+          - CheckoutTests
+          - CatalogTests
+          - E2ETests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Pods
+        uses: actions/download-artifact@v4
+        with:
+          name: pods
+          path: Pods
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: DerivedData
+
+      - name: Select Xcode
+        run: sudo xcode-select -switch ${{ env.DEVELOPER_DIR }}
+
+      - name: Boot Simulator
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available | grep "iPhone 15" | head -1 | grep -oE '[A-F0-9-]{36}')
+          xcrun simctl boot "$DEVICE_ID" || true
+
+      - name: Run ${{ matrix.test_class }}
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building \
+            -workspace ${{ env.WORKSPACE }} \
+            -scheme ${{ env.SCHEME }} \
+            -destination "${{ env.DESTINATION }}" \
+            -derivedDataPath DerivedData \
+            -only-testing:eCoffeeUITests/${{ matrix.test_class }} \
+            -resultBundlePath TestResults/${{ matrix.test_class }}.xcresult \
+            | xcpretty --color --report junit --output TestResults/${{ matrix.test_class }}-results.xml
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.test_class }}-results
+          path: TestResults/
+
+  # Code Coverage Report
+  coverage:
+    name: Code Coverage
+    runs-on: macos-14
+    needs: build
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Pods
+        uses: actions/download-artifact@v4
+        with:
+          name: pods
+          path: Pods
+
+      - name: Select Xcode
+        run: sudo xcode-select -switch ${{ env.DEVELOPER_DIR }}
+
+      - name: Boot Simulator
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available | grep "iPhone 15" | head -1 | grep -oE '[A-F0-9-]{36}')
+          xcrun simctl boot "$DEVICE_ID" || true
+
+      - name: Run Tests with Coverage
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -workspace ${{ env.WORKSPACE }} \
+            -scheme ${{ env.SCHEME }} \
+            -destination "${{ env.DESTINATION }}" \
+            -enableCodeCoverage YES \
+            -resultBundlePath TestResults/Coverage.xcresult \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            | xcpretty --color
+
+      - name: Generate Coverage Report
+        run: |
+          xcrun xccov view --report --json TestResults/Coverage.xcresult > coverage.json
+          echo "## Code Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          xcrun xccov view --report TestResults/Coverage.xcresult | head -20 >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage.json
+            TestResults/Coverage.xcresult
+          retention-days: 30
+
+  # Collect and Report Results
+  report:
+    name: Test Report
+    runs-on: macos-14
+    needs: [smoke-tests, ui-tests]
+    if: always()
+    steps:
+      - name: Download All Test Results
+        uses: actions/download-artifact@v4
+        with:
+          path: all-results
+          pattern: '*-results'
+          merge-multiple: true
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v4
+        if: always()
+        with:
+          report_paths: 'all-results/**/*.xml'
+          fail_on_failure: true
+          include_passed: true
+          detailed_summary: true
+
+      - name: Upload Combined Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: all-test-results
+          path: all-results/
+          retention-days: 30
