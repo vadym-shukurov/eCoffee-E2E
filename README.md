@@ -3,7 +3,10 @@
 [![iOS UI Tests](https://github.com/vadym-shukurov/eCoffee/actions/workflows/ios-tests.yml/badge.svg)](https://github.com/vadym-shukurov/eCoffee/actions/workflows/ios-tests.yml)
 [![PR Checks](https://github.com/vadym-shukurov/eCoffee/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/vadym-shukurov/eCoffee/actions/workflows/pr-checks.yml)
 
-eCoffee is an iOS application for ordering coffee with a comprehensive, enterprise-grade UI test automation framework.
+# ☕ eCoffee-E2E
+### Enterprise-Grade Mobile UI Automation Framework
+
+This repository demonstrates a robust, scalable approach to **iOS UI Automation**. Beyond simple scripts, this framework is built with **Technical Density**—prioritizing test stability, maintainability, and seamless integration into the developer workflow.
 
 > **Author:** Vadym Shukurov
 
